@@ -1,0 +1,163 @@
+name: 'CI/CD'
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*.*.*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  # cancel-previous-runs:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Cancel previous runs
+  #       uses: styfle/cancel-workflow-action@0.12.1
+  #       with:
+  #         access_token: ${{ github.token }}
+  #         workflow: 'yasm-integration Build and Deploy'
+  #         branch: ${{ github.ref }}
+  #       if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'push'
+
+  ci:
+    runs-on: ubuntu-latest
+    needs: cancel-previous-runs
+    # outputs:
+    #   imageTag: ${{ steps.vars.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # - name: Declare tag variable as artifact
+      #   id: vars
+      #   shell: bash
+      #   run: |
+      #     echo $(git rev-parse --short HEAD) >tag
+      #     # if it is a tag, use the tag
+      #     if [[ $GITHUB_REF == refs/tags/* ]]; then
+      #           echo ${GITHUB_REF#refs/tags/} >tag
+      #     fi
+      #     echo ::set-output name=tag::$(cat tag)
+
+      # - name: Create changelog
+      #   uses: prodyna/changelog-json@v1.5
+      #   with:
+      #     github-token: ${{ secrets.CHANGELOG_PAT }}
+      #     repositories: 'yasm,yasm-frontend,yasm-backend,yasm-integration,yasm-api,yasm-data'
+      #     organization: 'prodyna-yasm'
+      #     output-file: 'changelog.json'
+      #   # only when running on main branch or tag
+      #   if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+
+      # - uses: actions/setup-node@v3
+      #   with:
+      #     node-version: '18'
+
+      # - name: Cache dependencies
+      #   id: cache-dependencies
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ./node_modules
+      #     key: modules-${{ hashFiles('package-lock.json') }}
+
+      # - name: Install dependencies
+      #   if: steps.cache-dependencies.outputs.cache-hit != 'true'
+      #   run: npm ci --ignore-scripts --legacy-peer-deps
+
+      # - name: npm run build
+      #   run: npm run build
+
+      # - name: Login to Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ${{ vars.REGISTRY_HOST }}
+      #     username: ${{ vars.REGISTRY_USERNAME }}
+      #     password: ${{ secrets.REGISTRY_PASSWORD }}
+      #   if: github.event_name == 'push'
+
+      # - name: Build and push
+      #   # if: github.event.pull_request.merged
+      #   id: docker_build
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     file: Dockerfile
+      #     context: .
+      #     push: true
+      #     tags: ${{ vars.REGISTRY_HOST }}/yasm/yasm-frontend:${{ steps.vars.outputs.tag }}
+      #   if: github.event_name == 'push'
+
+      # - name: Image digest
+      #   run: echo ${{ steps.docker_build.outputs.digest }}
+      #   if: github.event_name == 'push'
+
+  deploy-dev:
+    # uses: ./.github/workflows/helm.yaml
+    # with:
+    #   namespace: frontend
+    #   release: yasm-frontend
+    #   chart: app/yasm-frontend
+    #   environment: dev
+    #   tag: ${{ needs.ci.outputs.imageTag }}
+    # secrets: inherit
+    needs: [ci]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'push'
+
+  # test-dev:
+  #   name: "Test dev"
+  #   runs-on: ubuntu-latest
+  #   needs: [cd-dev]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Run tests
+  #       uses: prodyna-yasm/yasm-test@1.30.1
+  #       with:
+  #         base-url: https://dev-yasm.prodyna.com/
+  #         api-url: https://dev-yasm.prodyna.com/api/v1
+  #         yasm-svc-user: ${{ secrets.TEST_USER }}
+  #         yasm-svc-pw: ${{ secrets.TEST_PW }}
+  #     #- name: List files
+  #     #  run: find reports -type f
+
+  # deploy-staging:
+  #   uses: ./.github/workflows/helm.yaml
+  #   with:
+  #     namespace: frontend
+  #     release: yasm-frontend
+  #     chart: app/yasm-frontend
+  #     environment: staging
+  #     tag: ${{ needs.ci.outputs.imageTag }}
+  #   secrets: inherit
+  #   needs: [ci, cd-dev]
+  #   if: startsWith(github.ref, 'refs/tags/')
+
+  # test-staging:
+  #   name: "Test staging"
+  #   runs-on: ubuntu-latest
+  #   needs: [cd-staging]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Run tests
+  #       uses: prodyna-yasm/yasm-test@1.30.1
+  #       with:
+  #         base-url: https://staging-yasm.prodyna.com/
+  #         api-url: https://staging-yasm.prodyna.com/api/v1
+  #         yasm-svc-user: ${{ secrets.TEST_USER }}
+  #         yasm-svc-pw: ${{ secrets.TEST_PW }}
+
+  deploy-prod:
+    # uses: ./.github/workflows/helm.yaml
+    # with:
+    #   namespace: frontend
+    #   release: yasm-frontend
+    #   chart: app/yasm-frontend
+    #   environment: prod
+    #   tag: ${{ needs.ci.outputs.imageTag }}
+    # secrets: inherit
+    needs: [ci, cd-staging]
+    if: startsWith(github.ref, 'refs/tags/')
