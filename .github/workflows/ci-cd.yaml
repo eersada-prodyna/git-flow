@@ -95,6 +95,9 @@ jobs:
       #   if: github.event_name == 'push'
 
   deploy-dev:
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
     # uses: ./.github/workflows/helm.yaml
     # with:
     #   namespace: frontend
@@ -151,6 +154,9 @@ jobs:
   #         yasm-svc-pw: ${{ secrets.TEST_PW }}
 
   deploy-prod:
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
     # uses: ./.github/workflows/helm.yaml
     # with:
     #   namespace: frontend
