@@ -167,5 +167,5 @@ jobs:
     #   environment: prod
     #   tag: ${{ needs.ci.outputs.imageTag }}
     # secrets: inherit
-    needs: [ci, cd-dev]
+    needs: [ci, deploy-dev]
     if: startsWith(github.ref, 'refs/tags/')
